@@ -1,0 +1,18 @@
+# 基础配置
+base:
+  port: 8080
+  host: "localhost"
+  debug: true
+
+# 数据库配置
+database:
+  host: "127.0.0.1"
+  port: 5432
+  name: "mydb"
+  user: "admin"
+  password: "secret"
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "app.log"
