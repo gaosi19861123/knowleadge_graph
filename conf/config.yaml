@@ -1,16 +1,12 @@
 # 基础配置
-base:
-  port: 8080
-  host: "localhost"
-  debug: true
-
-# 数据库配置
-database:
-  host: "127.0.0.1"
-  port: 5432
-  name: "mydb"
-  user: "admin"
-  password: "secret"
+pos_data:
+  tbl_sales_fp: "abfss://datalake-dic@pdisajedidls002.dfs.core.windows.net/Gold/TBL_SALES_DETAILS/"
+  query_period: 1
+  campaign_start_date: "202412"
+  comp_cd: "3618"  #九州
+  col: ["CUSTOMER_ID","SALES_YMD","SALES_HMS","REGISTER_NO","RECEIPT_NO","CAT_CD",
+        "SUB_CAT_CD","ITEM_CD_UNIQUE","SALES_AMT","SCHEDULE_PRICE","MASTER_PRICE",
+        "PRICE_DOWN_NUM","PRICE_DOWN_AMT", "SALES_NUM",  "COUNTRY_CD"]
 
 # 日志配置
 logging:

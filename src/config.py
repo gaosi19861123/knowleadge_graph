@@ -11,16 +11,18 @@ def load_config():
         config = yaml.safe_load(f)
     return config
 
-def load_config_from_file():
-    # 加载配置
-    config = load_config()
-    
-    # 使用配置参数
-    host = config['base']['host']
-    port = config['base']['port']
-    
-    # ... 其余代码 ...
-    return host, port
+class Config():
+    def __init__(self):
+        self.cfg = load_config()
+        self._pos_cfg() 
+
+    def _pos_cfg(self):
+        # 使用配置参数
+        self.tbl_sales_fp = self.cfg['pos_data']['tbl_sales_fp']
+        self.query_period = self.cfg['pos_data']['query_period']
+        self.campaign_start_date = self.cfg['pos_data']['campaign_start_date']
+        self.pos_col = self.cfg['pos_data']['col']  
+        self.comp_cd = self.cfg['pos_data']['comp_cd']
 
 if __name__ == "__main__":
-    load_config_from_file()
+    pass
