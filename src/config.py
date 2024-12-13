@@ -15,6 +15,7 @@ class Config():
     def __init__(self):
         self.cfg = load_config()
         self._pos_cfg() 
+        self._node_relation()
 
     def _pos_cfg(self):
         # 使用配置参数
@@ -23,6 +24,10 @@ class Config():
         self.campaign_start_date = self.cfg['pos_data']['campaign_start_date']
         self.pos_col = self.cfg['pos_data']['col']  
         self.comp_cd = self.cfg['pos_data']['comp_cd']
+    
+    def _node_relation(self):
+        self.node_fp = self.cfg['node_relation']['node_json_fp']
+        self.relation_fp = self.cfg['node_relation']['relation_json_fp']
 
 if __name__ == "__main__":
     pass

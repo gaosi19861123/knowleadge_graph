@@ -8,6 +8,11 @@ pos_data:
         "SUB_CAT_CD","ITEM_CD_UNIQUE","SALES_AMT","SCHEDULE_PRICE","MASTER_PRICE",
         "PRICE_DOWN_NUM","PRICE_DOWN_AMT", "SALES_NUM",  "COUNTRY_CD"]
 
+#
+node_relation:
+  node_json_fp: '/Volumes/develop/cdp/node/'
+  relation_json_fp: '/Volumes/develop/cdp/relation/'
+
 # 日志配置
 logging:
   level: "INFO"
