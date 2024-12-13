@@ -205,13 +205,10 @@ class DataTransformer:
     def transform_stores(self) -> None:
         """转换店铺数据"""
         try:
-            # 窗口函数用于聚合register numbers
-            window_spec = Window.partitionBy('SHOP_CD', 'COMPANY_CD_UNIQUE')
-            
+            # 窗口函数用于聚合register numbers            
             store_columns = [
                 fn.col('SHOP_CD').alias('id'),
                 fn.col('COMPANY_CD_UNIQUE').alias('company_id'),
-                fn.collect_set('REGISTER_NO').over(window_spec).alias('register_numbers')
             ]
             
             # 缓存频繁使用的数据
@@ -365,7 +362,7 @@ class RelationshipExtractor:
         """保存关系数据为JSON格式"""
         try:
             # 保存购买关系
-            purchases_df.write.mode('overwrite') \
+            purchases_df.write.mode('overwrite')\
                 .json(f"{output_dir}/purchases.json")
             self.logger.info("Saved purchase relationships")
 

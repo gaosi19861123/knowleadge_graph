@@ -82,3 +82,22 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# COMMAND ----------
+
+## 读取数据试一试
+persons = spark.read.json("/Volumes/develop/cdp/node/persons.json/*.json")
+display(persons)
+print(persons.count())
+
+# COMMAND ----------
+
+products = spark.read.json("/Volumes/develop/cdp/node/products.json/*.json")
+display(products)
+print(products.count())
+
+# COMMAND ----------
+
+stores = spark.read.json("/Volumes/develop/cdp/node/stores.json/*.json")
+display(stores)
+print(stores.count())

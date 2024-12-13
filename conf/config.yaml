@@ -1,13 +1,10 @@
 # 基础配置
 pos_data:
   tbl_sales_fp: "abfss://datalake-dic@pdisajedidls002.dfs.core.windows.net/Gold/TBL_SALES_DETAILS/"
-  query_period: 2
+  query_period: 1
   campaign_start_date: "20241211"
   comp_cd: "3618"  #九州
-  col: ["CUSTOMER_ID","SALES_YMD","SALES_HMS","REGISTER_NO","RECEIPT_NO","CAT_CD",
-        "SUB_CAT_CD","ITEM_CD_UNIQUE","SALES_AMT","SCHEDULE_PRICE","MASTER_PRICE",
-        "PRICE_DOWN_NUM","PRICE_DOWN_AMT", "SALES_NUM",  "COUNTRY_CD"]
-
+  
 #
 node_relation:
   node_json_fp: '/Volumes/develop/cdp/node/'
