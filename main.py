@@ -18,6 +18,7 @@ importlib.reload(src.data)
 logger = KGLogger("knowledge_graph")
 
 # COMMAND ----------
+
 #read config file and set parameters
 cfg = Config()
 
@@ -41,7 +42,13 @@ data = read_pos_data(
     comp_cd=cfg.comp_cd,
 )
 
-logger.info(f"target_file: {target_file}, cols: {cfg.pos_col}, comp_cd: {cfg.comp_cd}")
+logger.info(
+    f"target_file: {target_file}, cols: {cfg.pos_col}, comp_cd: {cfg.comp_cd}"
+)
+
+display(
+    data
+)
 
 # COMMAND ----------
 

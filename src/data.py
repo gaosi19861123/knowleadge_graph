@@ -28,7 +28,7 @@ def get_target_pos_files(
     # 定义 campaign_month
     campaign_start_date = pd.to_datetime(
         campaign_start_date, 
-        format="%Y%m"
+        format="%Y%m%d"
     )
 
     # 计算不包含 campaign_month 的前六个月的月份
@@ -40,13 +40,12 @@ def get_target_pos_files(
 
     # 将结果格式化为"YYYYMM"
     previous_six_months_str = (
-        previous_six_months.strftime("%Y%m").tolist()
+        previous_six_months.strftime("%Y%m%d").tolist()
     )
     
     return [
         f"{tbl_sales_details}/{month}*/*" for month in previous_six_months_str
     ]
-
     
 def read_pos_data(spark, 
                   file_path:List[str], 
@@ -67,8 +66,6 @@ def read_pos_data(spark,
     )
         
     return pos_data
-
-
 
 class DataTransformer:
     """数据转换处理类"""
@@ -260,6 +257,7 @@ class DataTransformer:
 
 
 class RelationshipExtractor:
+    
     def __init__(self, spark: SparkSession):
         self.spark = spark
         self.logger = self._setup_logger()
@@ -294,8 +292,11 @@ class RelationshipExtractor:
         return df.select(
             # 基本信息
             fn.concat_ws('_', 
-                fn.col('RECEIPT_NO'), 
-                fn.col('SALES_DETAIL_NO')
+                    fn.col('SHOP_CD'),
+                    fn.col('SALES_YMD').cast('string'),
+                    fn.col('SALES_HMS'),
+                    fn.col('REGISTER_NO'),  # 追加
+                    fn.col('RECEIPT_NO'),
             ).alias('id'),
             fn.col('CUSTOMER_ID').alias('person_id'),
             fn.col('ITEM_CD_UNIQUE').alias('product_id'),
@@ -375,6 +376,39 @@ class RelationshipExtractor:
 
         except Exception as e:
             self.logger.error(f"Error saving relationships: {str(e)}")
+            raise
+
+    def analyze_relationships(self, purchases_df, visits_df):
+        """分析关系数据"""
+        try:
+            # 购买关系分析
+            print("\n=== Purchase Relationship Analysis ===")
+            print("\nTop Products by Sales:")
+            purchases_df.groupBy('product_id') \
+                .agg(
+                    fn.count('*').alias('purchase_count'),
+                    fn.sum('purchase_details.quantity').alias('total_quantity'),
+                    fn.sum('purchase_details.amount').alias('total_amount')
+                ).orderBy(fn.col('purchase_count').desc()) \
+                .show(5)
+
+            print("\nPayment Method Distribution:")
+            purchases_df.groupBy('purchase_details.payment_method') \
+                .count() \
+                .show()
+
+            # 访问关系分析
+            print("\n=== Visit Relationship Analysis ===")
+            print("\nTop Stores by Visits:")
+            visits_df.groupBy('store_id') \
+                .agg(
+                    fn.count('*').alias('visit_count'),
+                    fn.countDistinct('person_id').alias('unique_visitors')
+                ).orderBy(fn.col('visit_count').desc()) \
+                .show(5)
+        
+        except Exception as e:
+            self.logger.error(f"Error analyzing relationships: {str(e)}")
             raise
 
 
