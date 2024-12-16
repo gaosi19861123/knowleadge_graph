@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Dict, List
 from datetime import datetime
+import os
 
 class Neo4jImporter:
     def __init__(self, uri: str, user: str, password: str):
@@ -39,25 +40,107 @@ class Neo4jImporter:
                 session.run(constraint)
         self.logger.info("Constraints created")
 
-    def import_persons(self, file_path: str):
-        """导入Person节点"""
+    def import_persons(self, directory_path: str, batch_mode: bool = True):
+        """
+        导入Person节点数据
+        Args:
+            directory_path: 包含JSON文件的目录路径
+            batch_mode: 是否使用批量处理模式
+        """
+        if not os.path.isdir(directory_path):
+            raise ValueError(f"目录不存在: {directory_path}")
+
+        # 获取目录下所有JSON文件
+        json_files = sorted([f for f in os.listdir(directory_path) if f.endswith('.json')])
+        total_files = len(json_files)
+        self.logger.info(f"找到 {total_files} 个JSON文件")
+
+        batch_size = 1000
+        total_records = 0
+        batch = []
+
+        try:
+            for file_idx, json_file in enumerate(json_files, 1):
+                file_path = os.path.join(directory_path, json_file)
+                self.logger.info(f"处理文件 {file_idx}/{total_files}: {json_file}")
+
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+
+                        try:
+                            person = json.loads(line.strip())
+                            
+                            # 构建person数据
+                            person_data = {
+                                'id': person['id'],
+                                'gender': person.get('gender', '0'),
+                                'birth_date': person.get('birth_date', ''),
+                                'location': {
+                                    'prefecture': person.get('location', {}).get('prefecture', ''),
+                                    'zip_code': person.get('location', {}).get('zip_code', ''),
+                                    'coordinates': {
+                                        'latitude': person.get('location', {}).get('coordinates', {}).get('latitude', ''),
+                                        'longitude': person.get('location', {}).get('coordinates', {}).get('longitude', '')
+                                    }
+                                },
+                                'membership': {
+                                    'member_id': person.get('membership', {}).get('member_id', ''),
+                                    'status': person.get('membership', {}).get('status', '')
+                                }
+                            }
+
+                            batch.append(person_data)
+                            
+                            # 批量处理
+                            if len(batch) >= batch_size:
+                                self._batch_import_persons(batch)
+                                total_records += len(batch)
+                                self.logger.info(f"已处理 {total_records} 条记录")
+                                batch = []
+
+                        except json.JSONDecodeError as e:
+                            self.logger.error(f"JSON解析错误: {str(e)}")
+                            continue
+
+                # 处理文件末尾的剩余批次
+                if batch:
+                    self._batch_import_persons(batch)
+                    total_records += len(batch)
+                    batch = []
+
+                self.logger.info(f"完成文件处理: {json_file}")
+
+            self.logger.info(f"所有文件处理完成，共导入 {total_records} 条记录")
+
+        except Exception as e:
+            self.logger.error(f"导入过程中发生错误: {str(e)}")
+            raise
+
+    def _batch_import_persons(self, batch):
+        """
+        批量导入人员数据到Neo4j
+        """
         query = """
-        MERGE (p:Person {id: $id})
-        SET p.gender = $gender,
-            p.birth_date = $birth_date,
-            p.location = $location,
-            p.contact_preferences = $contact_preferences,
-            p.membership = $membership
+        UNWIND $batch AS person
+        MERGE (p:Person {id: person.id})
+        SET p.gender = person.gender,
+            p.birth_date = person.birth_date,
+            p.prefecture = person.location.prefecture,
+            p.zip_code = person.location.zip_code,
+            p.latitude = person.location.coordinates.latitude,
+            p.longitude = person.location.coordinates.longitude,
+            p.member_id = person.membership.member_id,
+            p.status = person.membership.status
         """
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)['persons']
+        try:
             with self.driver.session() as session:
-                count = 0
-                for person in data:
-                    session.run(query, person)
-                    count += 1
-                self.logger.info(f"Imported {count} person nodes")
+                session.run(query, batch=batch)
+        except Exception as e:
+            self.logger.error(f"批量导入执行错误: {str(e)}")
+            raise
 
     def import_products(self, file_path: str):
         """导入Product节点"""

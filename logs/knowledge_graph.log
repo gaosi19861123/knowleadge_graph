@@ -31,3 +31,18 @@
 2024-12-13 16:35:41 - knowledge_graph - INFO - End importing knowledge graph
 2024-12-13 16:39:38 - knowledge_graph - INFO - Start importing knowledge graph
 2024-12-13 16:39:45 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-16 10:33:18 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:35:41 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:35:41 - knowledge_graph - ERROR - Error during import: 目录不存在: ./data/persons.json
+2024-12-16 10:36:55 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:36:55 - knowledge_graph - ERROR - Error during import: 目录不存在: ./data/persons.json
+2024-12-16 10:37:13 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:37:13 - knowledge_graph - ERROR - Error during import: 目录不存在: ./data/persons.json
+2024-12-16 10:38:08 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:41:10 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 10:41:10 - knowledge_graph - ERROR - Error during import: Extra data: line 2 column 1 (char 363)
+2024-12-16 11:24:35 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 11:24:35 - knowledge_graph - ERROR - Error during import: Extra data: line 2 column 1 (char 363)
+2024-12-16 11:29:39 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-16 11:30:12 - knowledge_graph - ERROR - Error during import: [Errno 21] Is a directory: '/home/gaosi/knowleadge_graph/data/node/products.json'
+2024-12-16 11:41:04 - knowledge_graph - INFO - Start importing knowledge graph

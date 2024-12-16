@@ -1,3 +1,4 @@
 #confの配下ファイルをgitしない
 conf/
 .env
+data/
