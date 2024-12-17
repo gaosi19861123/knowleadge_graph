@@ -56,3 +56,22 @@
 2024-12-17 11:00:30 - knowledge_graph - ERROR - Error during import: 
 2024-12-17 11:00:52 - knowledge_graph - INFO - Start importing knowledge graph
 2024-12-17 11:01:24 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-17 11:12:51 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 11:13:36 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-17 13:09:16 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 13:10:02 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-17 13:10:29 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 13:11:15 - knowledge_graph - ERROR - Error during import: {code: Neo.ClientError.Statement.TypeError} {message: Property values can only be of primitive types or arrays thereof. Encountered: Map{company_id -> String("3618"), register_no -> String("101"), conversion -> Map{converted -> Boolean('true'), purchase_id -> String("1008_4")}}.}
+2024-12-17 13:13:23 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 13:14:10 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-17 13:25:01 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 13:25:08 - knowledge_graph - ERROR - Error during import: 
+2024-12-17 13:25:33 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 13:26:04 - knowledge_graph - ERROR - Error during import: 'store_id'
+2024-12-17 15:27:03 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 15:27:03 - knowledge_graph - ERROR - Error during import: Couldn't connect to localhost:7687 (resolved to ('127.0.0.1:7687',)):
+Failed to establish connection to ResolvedIPv4Address(('127.0.0.1', 7687)) (reason [Errno 111] Connection refused)
+2024-12-17 15:34:50 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 15:35:41 - knowledge_graph - ERROR - Error during import: 'store_id'
+2024-12-17 15:38:13 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 15:40:00 - knowledge_graph - INFO - End importing knowledge graph

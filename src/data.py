@@ -252,7 +252,6 @@ class DataTransformer:
         self.transform_products()
         self.transform_stores()
 
-
 class RelationshipExtractor:
     
     def __init__(self, spark: SparkSession):

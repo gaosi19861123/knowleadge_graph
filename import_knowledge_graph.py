@@ -34,8 +34,8 @@ def main():
         importer.import_stores(json_files["stores"])
         
         # # 导入关系
-        # importer.import_purchase_relationships(json_files["purchases"])
-        # importer.import_visit_relationships(json_files["visits"])
+        importer.import_purchase_relationships(json_files["purchases"])
+        importer.import_visit_relationships(json_files["visits"])
         
         # 验证导入结果
         importer.verify_import()
