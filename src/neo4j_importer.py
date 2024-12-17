@@ -245,22 +245,81 @@ class Neo4jImporter:
             self.logger.error(f"批量导入执行错误: {str(e)}")
             raise
 
-    def import_stores(self, file_path: str):
-        """导入Store节点"""
+    def import_stores(self, directory_path: str):
+        """
+        导入Store节点数据
+        Args:
+            directory_path: 包含JSON文件的目录路径
+        """
+        if not os.path.isdir(directory_path):
+            raise ValueError(f"目录不存在: {directory_path}")
+
+        # 获取目录下所有JSON文件
+        json_files = sorted([f for f in os.listdir(directory_path) if f.endswith('.json')])
+        total_files = len(json_files)
+        self.logger.info(f"找到 {total_files} 个JSON文件")
+
+        batch_size = 1000
+        total_records = 0
+        batch = []
+
+        try:
+            for file_idx, json_file in enumerate(json_files, 1):
+                file_path = os.path.join(directory_path, json_file)
+                self.logger.info(f"处理文件 {file_idx}/{total_files}: {json_file}")
+
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+
+                        try:
+                            store = json.loads(line.strip())
+                            batch.append(store)
+                            
+                            # 批量处理
+                            if len(batch) >= batch_size:
+                                self._batch_import_stores(batch)
+                                total_records += len(batch)
+                                self.logger.info(f"已处理 {total_records} 条记录")
+                                batch = []
+
+                        except json.JSONDecodeError as e:
+                            self.logger.error(f"JSON解析错误: {str(e)}")
+                            continue
+
+                # 处理文件末尾的剩余批次
+                if batch:
+                    self._batch_import_stores(batch)
+                    total_records += len(batch)
+                    batch = []
+
+                self.logger.info(f"完成文件处理: {json_file}")
+
+            self.logger.info(f"所有商店数据导入完成，共导入 {total_records} 条记录")
+
+        except Exception as e:
+            self.logger.error(f"导入过程中发生错误: {str(e)}")
+            raise
+
+    def _batch_import_stores(self, batch):
+        """
+        批量导入商店数据到Neo4j
+        Args:
+            batch: 包含商店数据的列表
+        """
         query = """
-        MERGE (s:Store {id: $id})
-        SET s.company_id = $company_id,
-            s.register_numbers = $register_numbers
+        UNWIND $batch AS store
+        MERGE (s:Store {id: store.id})
+        SET s.company_id = store.company_id
         """
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)['stores']
+        try:
             with self.driver.session() as session:
-                count = 0
-                for store in data:
-                    session.run(query, store)
-                    count += 1
-                self.logger.info(f"Imported {count} store nodes")
+                session.run(query, batch=batch)
+        except Exception as e:
+            self.logger.error(f"批量导入执行错误: {str(e)}")
+            raise
 
     def import_purchase_relationships(self, file_path: str):
         """导入购买关系"""

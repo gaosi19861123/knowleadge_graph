@@ -31,7 +31,7 @@ def main():
         # 导入节点
         importer.import_persons(json_files["persons"])
         importer.import_products(json_files["products"])
-        # importer.import_stores(json_files["stores"])
+        importer.import_stores(json_files["stores"])
         
         # # 导入关系
         # importer.import_purchase_relationships(json_files["purchases"])

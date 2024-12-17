@@ -52,3 +52,7 @@
 2024-12-17 10:39:55 - knowledge_graph - ERROR - Error during import: name 'os' is not defined
 2024-12-17 10:41:18 - knowledge_graph - INFO - Start importing knowledge graph
 2024-12-17 10:42:05 - knowledge_graph - INFO - End importing knowledge graph
+2024-12-17 11:00:29 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 11:00:30 - knowledge_graph - ERROR - Error during import: 
+2024-12-17 11:00:52 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 11:01:24 - knowledge_graph - INFO - End importing knowledge graph
