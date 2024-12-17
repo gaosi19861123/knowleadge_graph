@@ -46,3 +46,9 @@
 2024-12-16 11:29:39 - knowledge_graph - INFO - Start importing knowledge graph
 2024-12-16 11:30:12 - knowledge_graph - ERROR - Error during import: [Errno 21] Is a directory: '/home/gaosi/knowleadge_graph/data/node/products.json'
 2024-12-16 11:41:04 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 10:35:56 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 10:36:29 - knowledge_graph - ERROR - Error during import: {code: Neo.ClientError.Statement.TypeError} {message: Property values can only be of primitive types or arrays thereof. Encountered: Map{medium_category -> String("233"), major_category -> String("296"), department -> Map{name -> String("グリナリ－"), code -> String("035")}, minor_category -> String("035"), group -> Map{name -> String("ガーデニング・グリナリー"), code -> String("233")}}.}
+2024-12-17 10:39:51 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 10:39:55 - knowledge_graph - ERROR - Error during import: name 'os' is not defined
+2024-12-17 10:41:18 - knowledge_graph - INFO - Start importing knowledge graph
+2024-12-17 10:42:05 - knowledge_graph - INFO - End importing knowledge graph

@@ -1,9 +1,9 @@
 from neo4j import GraphDatabase
 import json
 import logging
+import os
 from typing import Dict, List
 from datetime import datetime
-import os
 
 class Neo4jImporter:
     def __init__(self, uri: str, user: str, password: str):
@@ -142,24 +142,108 @@ class Neo4jImporter:
             self.logger.error(f"批量导入执行错误: {str(e)}")
             raise
 
-    def import_products(self, file_path: str):
-        """导入Product节点"""
+    def import_products(self, directory_path: str):
+        """
+        导入Product节点数据
+        Args:
+            directory_path: JSON文件路径
+        """
+
+        if not os.path.isdir(directory_path):
+            raise ValueError(f"目录不存在: {directory_path}")
+
+        # 获取目录下所有JSON文件
+        json_files = sorted([f for f in os.listdir(directory_path) if f.endswith('.json')])
+        total_files = len(json_files)
+        self.logger.info(f"开始导入产品数据找到 {total_files} 个JSON文件")
+    
+        batch_size = 1000
+        total_records = 0
+        batch = []
+
+        try:
+            for file_idx, json_file in enumerate(json_files, 1):
+                file_path = os.path.join(directory_path, json_file)
+                self.logger.info(f"处理文件 {file_idx}/{total_files}: {json_file}")
+                
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+
+                        try:
+                            product = json.loads(line.strip())
+                            
+                            # 处理categories数据，将嵌套结构展平
+                            categories = product.get('categories', {})
+                            product_data = {
+                                'id': product['id'],
+                                'name': product.get('name', ''),
+                                'name_kana': product.get('name_kana', ''),
+                                # 展平categories结构
+                                'major_category': categories.get('major_category', ''),
+                                'medium_category': categories.get('medium_category', ''),
+                                'minor_category': categories.get('minor_category', ''),
+                                'group_code': categories.get('group', {}).get('code', ''),
+                                'group_name': categories.get('group', {}).get('name', ''),
+                                'department_code': categories.get('department', {}).get('code', ''),
+                                'department_name': categories.get('department', {}).get('name', ''),
+                                # 处理pricing数据
+                                'price': product.get('pricing', {}).get('price', 0),
+                                'tax_rate': product.get('pricing', {}).get('tax_rate', 0)
+                            }
+
+                            batch.append(product_data)
+                            
+                            if len(batch) >= batch_size:
+                                self._batch_import_products(batch)
+                                total_records += len(batch)
+                                self.logger.info(f"已处理 {total_records} 条记录")
+                                batch = []
+
+                        except json.JSONDecodeError as e:
+                            self.logger.error(f"JSON解析错误: {str(e)}")
+                            continue
+
+                    # 处理剩余的批次
+                    if batch:
+                        self._batch_import_products(batch)
+                        total_records += len(batch)
+
+                self.logger.info(f"产品数据导入完成，共导入 {total_records} 条记录")
+
+        except Exception as e:
+            self.logger.error(f"导入过程中发生错误: {str(e)}")
+            raise
+
+    def _batch_import_products(self, batch):
+        """
+        批量导入产品数据到Neo4j
+        Args:
+            batch: 包含产品数据的列表
+        """
         query = """
-        MERGE (p:Product {id: $id})
-        SET p.name = $name,
-            p.name_kana = $name_kana,
-            p.categories = $categories,
-            p.pricing = $pricing
+        UNWIND $batch AS product
+        MERGE (p:Product {id: product.id})
+        SET p.name = product.name,
+            p.name_kana = product.name_kana,
+            p.major_category = product.major_category,
+            p.medium_category = product.medium_category,
+            p.minor_category = product.minor_category,
+            p.group_code = product.group_code,
+            p.group_name = product.group_name,
+            p.department_code = product.department_code,
+            p.department_name = product.department_name,
+            p.price = product.price,
+            p.tax_rate = product.tax_rate
         """
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)['products']
+        try:
             with self.driver.session() as session:
-                count = 0
-                for product in data:
-                    session.run(query, product)
-                    count += 1
-                self.logger.info(f"Imported {count} product nodes")
+                session.run(query, batch=batch)
+        except Exception as e:
+            self.logger.error(f"批量导入执行错误: {str(e)}")
+            raise
 
     def import_stores(self, file_path: str):
         """导入Store节点"""
