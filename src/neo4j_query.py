@@ -2,6 +2,8 @@ from neo4j import GraphDatabase
 import logging
 from typing import List, Dict, Any
 from datetime import datetime
+from dotenv import load_dotenv
+import os 
 
 class Neo4jQuerier:
     def __init__(self, uri: str, user: str, password: str):
@@ -49,11 +51,17 @@ class Neo4jQuerier:
             包含购买记录的列表
         """
         try:
+            # 日付文字列を変換
+            if start_date:
+                formatted_start = datetime.strptime(start_date, "%Y-%m-%d").strftime("%Y%m%dT000000")
+            if end_date:
+                formatted_end = datetime.strptime(end_date, "%Y-%m-%d").strftime("%Y%m%dT235959")
+
             query = """
             MATCH (p:Person {id: $person_id})-[r:PURCHASE]->(prod:Product)
             WHERE 
-                ($start_date IS NULL OR r.datetime >= datetime($start_date)) AND
-                ($end_date IS NULL OR r.datetime <= datetime($end_date))
+                ($start_date IS NULL OR r.datetime >= $start_date) AND
+                ($end_date IS NULL OR r.datetime <= $end_date)
             RETURN 
                 prod.id as product_id,
                 prod.name as product_name,
@@ -71,8 +79,8 @@ class Neo4jQuerier:
                     query,
                     person_id=person_id,
                     limit=limit,
-                    start_date=start_date,
-                    end_date=end_date
+                    start_date=formatted_start if start_date else None,
+                    end_date=formatted_end if end_date else None
                 )
                 
                 purchases = [dict(record) for record in result]
@@ -103,11 +111,17 @@ class Neo4jQuerier:
             包含购买用户记录的列表
         """
         try:
+            # 日付文字列を変換
+            if start_date:
+                formatted_start = datetime.strptime(start_date, "%Y-%m-%d").strftime("%Y%m%dT000000")
+            if end_date:
+                formatted_end = datetime.strptime(end_date, "%Y-%m-%d").strftime("%Y%m%dT235959")
+
             query = """
             MATCH (p:Person)-[r:PURCHASE]->(prod:Product {id: $product_id})
             WHERE 
-                ($start_date IS NULL OR r.datetime >= datetime($start_date)) AND
-                ($end_date IS NULL OR r.datetime <= datetime($end_date))
+                ($start_date IS NULL OR r.datetime >= $start_date) AND
+                ($end_date IS NULL OR r.datetime <= $end_date)
             RETURN 
                 p.id as person_id,
                 p.gender as gender,
@@ -125,8 +139,8 @@ class Neo4jQuerier:
                     query,
                     product_id=product_id,
                     limit=limit,
-                    start_date=start_date,
-                    end_date=end_date
+                    start_date=formatted_start if start_date else None,
+                    end_date=formatted_end if end_date else None
                 )
                 
                 purchasers = [dict(record) for record in result]
@@ -219,35 +233,43 @@ class Neo4jQuerier:
             self.logger.error(f"Error retrieving related products for {product_id}: {str(e)}")
             raise 
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     # 初始化查询器
-    querier = Neo4jQuerier("neo4j://localhost:7687", "neo4j", "password")
+    load_dotenv()
+    uri = os.getenv("NEO4J_URI")
+    user = os.getenv("NEO4J_USER")
+    password = os.getenv("NEO4J_PASSWORD")
+    querier = Neo4jQuerier(uri, user, password)
 
     # 获取用户购买记录
     purchases = querier.get_person_purchases(
-        person_id="12345",
+        person_id="1000000195648492",
         limit=5,
-        start_date="2024-01-01",
-        end_date="2024-03-31"
+        start_date="2024-12-01",
+        end_date="2024-12-11"
     )
+    print(purchases)
 
-    # # 获取商品的购买者
-    # purchasers = querier.get_product_purchasers(
-    #     product_id="67890",
-    #     limit=5
-    # )
 
-    # # 获取购买统计
+    # 获取商品的购买者
+    purchasers = querier.get_product_purchasers(
+        product_id="2311546305039",
+        limit=5
+    )
+    print(purchasers)
+
+    # 获取购买统计
     # stats = querier.get_purchase_statistics(
     #     entity_id="12345",
     #     entity_type="person"
     # )
+    # print(stats)
 
-    # # 获取相关商品
-    # related = querier.get_related_products(
-    #     product_id="67890",
-    #     limit=5
-    # )
+#     # # 获取相关商品
+#     # related = querier.get_related_products(
+#     #     product_id="67890",
+#     #     limit=5
+#     # )
 
-    # 关闭连接
-    querier.close()
+#     # 关闭连接
+#     querier.close()
