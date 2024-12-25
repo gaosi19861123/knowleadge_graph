@@ -494,7 +494,7 @@ if __name__ == "__main__":
 
     # 获取用户购买记录
     purchases = querier.get_person_purchases(
-        person_id="1000000195648492",
+        person_id="1000000101426205",
         limit=5,
         start_date="2024-12-01",
         end_date="2024-12-11"
@@ -503,7 +503,7 @@ if __name__ == "__main__":
 
     # 获取商品的购买者
     purchasers = querier.get_product_purchasers(
-        product_id="2309316506113",
+        product_id="4902519045922",
         limit=5,
         start_date="2024-01-01",  # 添加开始日期
         end_date="2024-12-31", # 添加结束日期
@@ -512,7 +512,7 @@ if __name__ == "__main__":
 
     #get_related_products
     related_products = querier.get_related_products(
-        product_id="4901873871208",
+        product_id="4902519045922",
         limit=5
     )
     print(related_products)
@@ -552,19 +552,19 @@ if __name__ == "__main__":
     #     print("---")
 
     
-    # 在main部分添加测试代码
-    association_rules = querier.get_association_rules(
-        min_support=0.001,
-        min_confidence=0.1,
-        limit=5
-    )
-    print("\n商品关联规则：")
-    for rule in association_rules:
-        print(f"规则：{rule['antecedent_name']} -> {rule['consequent_name']}")
-        print(f"支持度: {rule['support']:.4f}")
-        print(f"置信度: {rule['confidence']:.4f}")
-        print(f"提升度: {rule['lift']:.4f}")
-        print("---")
+    # # 在main部分添加测试代码
+    # association_rules = querier.get_association_rules(
+    #     min_support=0.001,
+    #     min_confidence=0.1,
+    #     limit=5
+    # )
+    # print("\n商品关联规则：")
+    # for rule in association_rules:
+    #     print(f"规则：{rule['antecedent_name']} -> {rule['consequent_name']}")
+    #     print(f"支持度: {rule['support']:.4f}")
+    #     print(f"置信度: {rule['confidence']:.4f}")
+    #     print(f"提升度: {rule['lift']:.4f}")
+    #     print("---")
     
     # 关闭连接
     querier.close()

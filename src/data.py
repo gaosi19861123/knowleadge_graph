@@ -328,9 +328,24 @@ class RelationshipExtractor:
 
     def _create_visit_relationships(self, df):
         """创建访问关系数据"""
-        return df.select(
+        # 首先计算每个访问ID的消费总额
+        visit_totals = df.groupBy(
+            'SHOP_CD', 'SALES_YMD', 'SALES_HMS', 
+            'REGISTER_NO', 'RECEIPT_NO'
+        ).agg(
+            fn.sum('SALES_AMT').alias('total_amount')
+        )
+        
+        # 主要的访问数据处理
+        visit_data = df.select(
             # 基本信息
-            fn.concat('RECEIPT_NO').alias('id'),
+            fn.concat_ws('_', 
+                    fn.col('SHOP_CD'),
+                    fn.col('SALES_YMD').cast('string'),
+                    fn.col('SALES_HMS'),
+                    fn.col('REGISTER_NO'),
+                    fn.col('RECEIPT_NO'),
+            ).alias('id'),
             fn.col('CUSTOMER_ID').alias('person_id'),
             fn.col('SHOP_CD').alias('store_id'),
             
@@ -353,8 +368,25 @@ class RelationshipExtractor:
                     ).alias('purchase_id')
                 ).alias('conversion')
             ).alias('visit_details')
-        ).where(
-            fn.col('CUSTOMER_ID').isNotNull()
+        )
+        
+        # 将总金额加入到访问数据中
+        result = visit_data.join(
+            visit_totals,
+            [
+                visit_data.store_id == visit_totals.SHOP_CD,
+                fn.split(visit_data.datetime, 'T')[0].cast('int') == visit_totals.SALES_YMD,
+                fn.split(visit_data.datetime, 'T')[1] == visit_totals.SALES_HMS,
+                fn.split(visit_data.id, '_')[3] == visit_totals.REGISTER_NO,
+                fn.split(visit_data.id, '_')[4] == visit_totals.RECEIPT_NO
+            ]
+        ).select(
+            visit_data['*'],
+            fn.col('total_amount')
+        )
+        
+        return result.where(
+            fn.col('person_id').isNotNull()
         ).dropDuplicates(['id'])
 
     def save_relationships(self, purchases_df, visits_df, output_dir: str):
