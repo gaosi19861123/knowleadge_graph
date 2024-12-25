@@ -213,7 +213,7 @@ class Neo4jQuerier:
             query = """
             MATCH (prod1:Product {id: $product_id})<-[:PURCHASE]-(p:Person)-[:PURCHASE]->(prod2:Product)
             WHERE prod1 <> prod2
-            WITH prod2, count(*) as frequency
+            WITH prod2, count(DISTINCT p) as frequency
             RETURN 
                 prod2.id as product_id,
                 prod2.name as product_name,
@@ -233,6 +233,257 @@ class Neo4jQuerier:
             self.logger.error(f"Error retrieving related products for {product_id}: {str(e)}")
             raise 
 
+    def get_user_based_recommendations(
+        self, 
+        person_id: str, 
+        limit: int = 10,
+        similarity_threshold: float = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        基于用户协同过滤的商品推荐
+        
+        Args:
+            person_id: 用户ID
+            limit: 返回推荐商品的最大数量
+            similarity_threshold: 用户相似度阈值（0-1之间）
+            
+        Returns:
+            推荐商品列表，每个商品包含相似度得分
+        """
+        try:
+            query = """
+            // 1. 获取目标用户的全部购买列表
+            MATCH (target:Person {id: $person_id})-[:PURCHASE]->(p:Product)
+            WITH target, collect(DISTINCT p.id) AS target_products
+
+            // 2. 收集每个 "other" 用户的全部购买列表
+            MATCH (other:Person)-[:PURCHASE]->(p2:Product)
+            WHERE other <> target
+            WITH target, other, target_products,
+                collect(DISTINCT p2.id) AS other_products
+
+            // 3. 计算相似度（使用原生Cypher计算Jaccard相似度）
+            WITH target, other, target_products, other_products,
+                [x IN target_products WHERE x IN other_products] AS common_products,
+                size(target_products) AS target_size,
+                size(other_products) AS other_size
+            WITH target, other, target_products,
+                CASE 
+                    WHEN (target_size + other_size - size(common_products)) > 0
+                    THEN toFloat(size(common_products)) / (target_size + other_size - size(common_products))
+                    ELSE 0
+                END AS similarity
+            WHERE similarity >= $similarity_threshold
+
+            // 4. 匹配 "相似用户" 购买的目标用户尚未购买的商品
+            MATCH (other)-[:PURCHASE]->(rec_product:Product)
+            WHERE NOT rec_product.id IN target_products
+
+            // 5. 计算推荐得分，并收集相似用户信息
+            WITH DISTINCT rec_product, other.id as similar_user_id, similarity
+            WITH rec_product, 
+                sum(similarity) AS total_similarity, 
+                count(*) AS purchase_count,
+                collect({user_id: similar_user_id, similarity: similarity}) as similar_users
+
+            RETURN 
+                rec_product.id AS product_id,
+                rec_product.name AS product_name,
+                rec_product.major_category AS category,
+                total_similarity * log(purchase_count + 1) AS recommendation_score,
+                purchase_count,
+                similar_users
+            ORDER BY recommendation_score DESC
+            LIMIT $limit
+            """
+            
+            with self.driver.session() as session:
+                result = session.run(
+                    query,
+                    person_id=person_id,
+                    similarity_threshold=similarity_threshold,
+                    limit=limit
+                )
+                
+                recommendations = [dict(record) for record in result]
+                self.logger.info(
+                    f"Generated {len(recommendations)} recommendations for user {person_id}"
+                )
+                return recommendations
+                
+        except Exception as e:
+            self.logger.error(
+                f"Error generating recommendations for user {person_id}: {str(e)}"
+            )
+            raise
+
+    def get_item_based_recommendations(
+        self, 
+        person_id: str, 
+        limit: int = 10,
+        similarity_threshold: float = 0.1,
+        max_history_items: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        基于物品的协同过滤推荐
+        
+        Args:
+            person_id: 用户ID
+            limit: 返回推荐商品的最大数量
+            similarity_threshold: 物品相似度阈值（0-1之间）
+            max_history_items: 用于推荐的最大历史购买商品数
+            
+        Returns:
+            推荐商品列表，每个商品包含相似度得分
+        """
+        try:
+            query = """
+            // 获取用户最近购买的商品
+            MATCH (target:Person {id: $person_id})-[r1:PURCHASE]->(history:Product)
+            WITH target, history
+            ORDER BY r1.datetime DESC
+            LIMIT $max_history_items
+            
+            // 收集历史购买商品ID
+            WITH target, collect(history) as history_products,
+                 collect(history.id) as history_product_ids
+            
+            // 找到与历史购买商品有共同购买者的其他商品
+            UNWIND history_products as history_prod
+            MATCH (history_prod)<-[:PURCHASE]-(common_user:Person)-[:PURCHASE]->(rec_product:Product)
+            WHERE NOT rec_product.id IN history_product_ids
+            
+            // 计算物品相似度
+            WITH DISTINCT history_prod, rec_product,
+                 // 共同购买者数量
+                 count(common_user) as common_buyers,
+                 // 历史商品的总购买者数量
+                 size((history_prod)<-[:PURCHASE]-()) as history_buyers,
+                 // 推荐商品的总购买者数量
+                 size((rec_product)<-[:PURCHASE]-()) as rec_buyers
+            
+            // 使用Jaccard相似度
+            WITH rec_product,
+                 toFloat(common_buyers) / 
+                 (history_buyers + rec_buyers - common_buyers) as similarity
+            WHERE similarity >= $similarity_threshold
+            
+            // 聚合并计算最终推荐得分
+            WITH rec_product,
+                 sum(similarity) as similarity_score,
+                 count(*) as connection_count
+            
+            RETURN 
+                rec_product.id as product_id,
+                rec_product.name as product_name,
+                rec_product.major_category as category,
+                similarity_score * log(connection_count + 1) as recommendation_score,
+                connection_count as related_items_count
+            ORDER BY recommendation_score DESC
+            LIMIT $limit
+            """
+            
+            with self.driver.session() as session:
+                result = session.run(
+                    query,
+                    person_id=person_id,
+                    similarity_threshold=similarity_threshold,
+                    limit=limit,
+                    max_history_items=max_history_items
+                )
+                
+                recommendations = [dict(record) for record in result]
+                self.logger.info(
+                    f"Generated {len(recommendations)} item-based recommendations for user {person_id}"
+                )
+                return recommendations
+                
+        except Exception as e:
+            self.logger.error(
+                f"Error generating item-based recommendations for user {person_id}: {str(e)}"
+            )
+            raise
+
+    def get_association_rules(
+        self,
+        min_support: float = 0.001,
+        min_confidence: float = 0.1,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        获取商品关联规则
+        
+        Args:
+            min_support: 最小支持度（0-1之间）
+            min_confidence: 最小置信度（0-1之间）
+            limit: 返回规则的最大数量
+            
+        Returns:
+            关联规则列表，每个规则包含前项、后项、支持度、置信度和提升度
+        """
+        try:
+            query = """
+            // 计算总交易数
+            MATCH (p:Person)
+            WITH count(DISTINCT p) as total_transactions
+
+            // 查找频繁项集
+            MATCH (p:Person)-[:PURCHASE]->(prod1:Product)
+            MATCH (p)-[:PURCHASE]->(prod2:Product)
+            WHERE prod1.id < prod2.id  // 避免重复计算
+
+            // 计算支持度和置信度
+            WITH prod1, prod2, total_transactions,
+                 count(DISTINCT p) as support_count,
+                 size((prod1)<-[:PURCHASE]-()) as prod1_count,
+                 size((prod2)<-[:PURCHASE]-()) as prod2_count
+            
+            WITH prod1, prod2,
+                 toFloat(support_count) / total_transactions as support,
+                 toFloat(support_count) / prod1_count as conf1_2,
+                 toFloat(support_count) / prod2_count as conf2_1,
+                 toFloat(prod1_count) / total_transactions as prod1_support,
+                 toFloat(prod2_count) / total_transactions as prod2_support,
+                 support_count, total_transactions
+            
+            WHERE support >= $min_support AND 
+                  (conf1_2 >= $min_confidence OR conf2_1 >= $min_confidence)
+            
+            // 计算提升度
+            WITH prod1, prod2, support, conf1_2, conf2_1,
+                 prod1_support, prod2_support,
+                 conf1_2 / prod2_support as lift1_2,
+                 conf2_1 / prod1_support as lift2_1
+            
+            // 返回两个方向的规则
+            RETURN 
+                prod1.id as antecedent_id,
+                prod1.name as antecedent_name,
+                prod2.id as consequent_id,
+                prod2.name as consequent_name,
+                support as support,
+                conf1_2 as confidence,
+                lift1_2 as lift
+            ORDER BY lift DESC
+            LIMIT $limit
+            """
+            
+            with self.driver.session() as session:
+                result = session.run(
+                    query,
+                    min_support=min_support,
+                    min_confidence=min_confidence,
+                    limit=limit
+                )
+                
+                rules = [dict(record) for record in result]
+                self.logger.info(f"Generated {len(rules)} association rules")
+                return rules
+                
+        except Exception as e:
+            self.logger.error(f"Error generating association rules: {str(e)}")
+            raise
+
 if __name__ == "__main__":
     # 初始化查询器
     load_dotenv()
@@ -250,26 +501,70 @@ if __name__ == "__main__":
     )
     print(purchases)
 
-
     # 获取商品的购买者
     purchasers = querier.get_product_purchasers(
-        product_id="2311546305039",
-        limit=5
+        product_id="2309316506113",
+        limit=5,
+        start_date="2024-01-01",  # 添加开始日期
+        end_date="2024-12-31", # 添加结束日期
     )
     print(purchasers)
 
-    # 获取购买统计
-    # stats = querier.get_purchase_statistics(
-    #     entity_id="12345",
-    #     entity_type="person"
+    #get_related_products
+    related_products = querier.get_related_products(
+        product_id="4901873871208",
+        limit=5
+    )
+    print(related_products)
+
+    # 基于用户协同过滤的推荐
+    # recommendations = querier.get_user_based_recommendations(
+    #     person_id="1000000195718338",
+    #     limit=5,
+    #     similarity_threshold=0
     # )
-    # print(stats)
+    # print("推荐商品：")
+    # for rec in recommendations:
+    #     print(f"商品ID: {rec['product_id']}")
+    #     print(f"商品名称: {rec['product_name']}")
+    #     print(f"分类: {rec['category']}")
+    #     print(f"推荐得分: {rec['recommendation_score']:.3f}")
+    #     print(f"购买次数: {rec['purchase_count']}")
+    #     print("相似用户：")
+    #     for user in rec['similar_users']:
+    #         print(f"  - 用户ID: {user['user_id']}, 相似度: {user['similarity']:.3f}")
+    #     print("---")
 
-#     # # 获取相关商品
-#     # related = querier.get_related_products(
-#     #     product_id="67890",
-#     #     limit=5
-#     # )
+    # # 基于物品的协同过滤推荐
+    # item_recommendations = querier.get_item_based_recommendations(
+    #     person_id="1000000195718338",
+    #     limit=5,
+    #     similarity_threshold=0.0,
+    #     max_history_items=10
+    # )
+    # print("\n基于物品的推荐商品：")
+    # for rec in item_recommendations:
+    #     print(f"商品ID: {rec['product_id']}")
+    #     print(f"商品名称: {rec['product_name']}")
+    #     print(f"分类: {rec['category']}")
+    #     print(f"推荐得分: {rec['recommendation_score']:.3f}")
+    #     print(f"相关商品数: {rec['related_items_count']}")
+    #     print("---")
 
-#     # 关闭连接
-#     querier.close()
+    
+    # 在main部分添加测试代码
+    association_rules = querier.get_association_rules(
+        min_support=0.001,
+        min_confidence=0.1,
+        limit=5
+    )
+    print("\n商品关联规则：")
+    for rule in association_rules:
+        print(f"规则：{rule['antecedent_name']} -> {rule['consequent_name']}")
+        print(f"支持度: {rule['support']:.4f}")
+        print(f"置信度: {rule['confidence']:.4f}")
+        print(f"提升度: {rule['lift']:.4f}")
+        print("---")
+    
+    # 关闭连接
+    querier.close()
