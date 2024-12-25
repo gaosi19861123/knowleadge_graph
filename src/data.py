@@ -291,7 +291,7 @@ class RelationshipExtractor:
                     fn.col('SHOP_CD'),
                     fn.col('SALES_YMD').cast('string'),
                     fn.col('SALES_HMS'),
-                    fn.col('REGISTER_NO'),  # 追加
+                    fn.col('REGISTER_NO'), # 追加
                     fn.col('RECEIPT_NO'),
             ).alias('id'),
             fn.col('CUSTOMER_ID').alias('person_id'),
@@ -330,8 +330,7 @@ class RelationshipExtractor:
         """创建访问关系数据"""
         # 首先计算每个访问ID的消费总额
         visit_totals = df.groupBy(
-            'SHOP_CD', 'SALES_YMD', 'SALES_HMS', 
-            'REGISTER_NO', 'RECEIPT_NO'
+            'SHOP_CD', 'SALES_YMD',
         ).agg(
             fn.sum('SALES_AMT').alias('total_amount')
         )
@@ -342,9 +341,6 @@ class RelationshipExtractor:
             fn.concat_ws('_', 
                     fn.col('SHOP_CD'),
                     fn.col('SALES_YMD').cast('string'),
-                    fn.col('SALES_HMS'),
-                    fn.col('REGISTER_NO'),
-                    fn.col('RECEIPT_NO'),
             ).alias('id'),
             fn.col('CUSTOMER_ID').alias('person_id'),
             fn.col('SHOP_CD').alias('store_id'),
